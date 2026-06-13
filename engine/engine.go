@@ -168,7 +168,9 @@ func sensitiveChanged(dir string) []string {
 	return hits
 }
 
-// Install merges nitpick's hook fragment into Claude Code settings.json.
+// Install installs nitpick into Claude Code: it writes the embedded
+// reliability-architect-review skill into the skills directory and merges
+// nitpick's hook fragment into settings.json (idempotently, with a backup).
 //
 //	nitpick install [binary] [--project] [--write]
 func Install(args []string) int {
@@ -187,12 +189,19 @@ func Install(args []string) int {
 			binary = a
 		}
 	}
-	m := machine.Machine()
+
 	target, err := settingsPath(scope)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
+	skillRoot, err := skillsDir(scope)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+
+	m := machine.Machine()
 	existing, err := readSettings(target)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "install: cannot read %s: %v\n", target, err)
@@ -203,33 +212,49 @@ func Install(args []string) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	b, err := json.MarshalIndent(merged, "", "  ")
+	mergedJSON, err := json.MarshalIndent(merged, "", "  ")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
+
 	if !write {
-		if added == 0 {
-			fmt.Fprintf(os.Stderr, "%s already installed in %s — nothing to add. (dry run; --write to apply)\n", m.Name, target)
-		} else {
-			fmt.Fprintf(os.Stderr, "would add %d trigger entr(y/ies) to %s; re-run with --write to apply. (dry run)\n", added, target)
+		dests, _ := installSkillFiles(skillRoot, false)
+		for _, d := range dests {
+			fmt.Fprintf(os.Stderr, "would install skill -> %s\n", d)
 		}
-		fmt.Println(string(b))
+		if added == 0 {
+			fmt.Fprintf(os.Stderr, "hooks: already present in %s\n", target)
+		} else {
+			fmt.Fprintf(os.Stderr, "hooks: would add %d trigger entr(y/ies) to %s\n", added, target)
+		}
+		fmt.Fprintln(os.Stderr, "(dry run; re-run with --write to apply)")
+		fmt.Println(string(mergedJSON))
 		return 0
 	}
+
+	dests, err := installSkillFiles(skillRoot, true)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "install: skill: %v\n", err)
+		return 1
+	}
+	for _, d := range dests {
+		fmt.Fprintf(os.Stderr, "installed skill -> %s\n", d)
+	}
+
 	if added == 0 {
-		fmt.Fprintf(os.Stderr, "%s already installed in %s — nothing to do.\n", m.Name, target)
+		fmt.Fprintf(os.Stderr, "hooks: already present in %s\n", target)
 		return 0
 	}
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	if err := os.WriteFile(target, b, 0o644); err != nil {
+	if err := os.WriteFile(target, mergedJSON, 0o644); err != nil {
 		fmt.Fprintf(os.Stderr, "install: cannot write %s: %v\n", target, err)
 		return 1
 	}
-	fmt.Fprintf(os.Stderr, "installed %s into %s (added %d trigger entr(y/ies)).\n", m.Name, target, added)
+	fmt.Fprintf(os.Stderr, "installed %d hook entr(y/ies) -> %s\n", added, target)
 	return 0
 }
 

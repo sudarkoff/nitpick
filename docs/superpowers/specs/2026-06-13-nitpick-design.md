@@ -236,3 +236,16 @@ trigger = PreToolUse push-to-main + SessionStart + Stop-watch; fail-open.
   - **Deferred:** `defn:` auto-verification — defn needs a per-repo graph
     (`defn init`), so it is honestly rejected (cite `sha:`/`test:` or `waive`)
     until repo-managed defn is in scope.
+
+## Skill install + ingestion loop (2026-06-13)
+
+`nitpick install` now installs the skill, not just the hooks: the
+`reliability-architect-review` SKILL.md is vendored under `skills/` and embedded
+via `go:embed`, so a `go install`-ed binary carries it. `install [--write]`
+writes it to `<settings-dir>/skills/reliability-architect-review/` (backing up a
+differing existing copy to `.bak`) and merges the hook fragment. The shipped
+skill ends with a "Persisting findings to nitpick" step that runs
+`nitpick review --from <file>` — closing the previously-missing loop from "review
+emitted findings" to "findings in the DB". An engine test asserts the embedded
+skill contains every parser field label, the `FINDING RAR` header form, and the
+`nitpick review` call, so the skill and parser cannot drift apart silently.

@@ -20,10 +20,15 @@ for the design. Phases 1–3 complete (the optional defn auto-verify is deferred
 go install github.com/sudarkoff/nitpick/cmd/nitpick@latest
 nitpick doctor             # check dependencies (dolt required; slimemold/defn/API key optional)
 nitpick init               # create the findings database
-nitpick install --write    # wire the gate into Claude Code hooks
+nitpick install --write    # install the skill + wire the gate into Claude Code hooks
 ```
 
 Requires Go 1.26+ and the `dolt` CLI on PATH.
+
+`install` writes the bundled `reliability-architect-review` skill into
+`~/.claude/skills` and registers the gate hooks. That skill ends by running
+`nitpick review`, which is what records findings — so `nitpick list` reflects
+exactly what has been ingested (run a review to populate it).
 
 ## Usage
 
