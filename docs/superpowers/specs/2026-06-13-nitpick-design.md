@@ -222,11 +222,17 @@ trigger = PreToolUse push-to-main + SessionStart + Stop-watch; fail-open.
   `engine` (event-enriching dispatcher `nitpick run`, `nitpick install` via
   `compile.MergeHooks`). Verified: push-to-main with an open P0 blocks (exit 2);
   resolving unblocks it.
-- **Phase 3 — deterministic core DONE.** `loop.VerifyEvidence` really verifies
-  `sha:` (commit exists) and `test:` (a matching test passes); non-verifiable
-  evidence is rejected toward `waive`. Wired into `nitpick resolve` (fake sha is
-  rejected, real sha resolves). Capstone loop verified end-to-end.
-  - **Remaining Phase-3 sub-work** (needs external services to build+exercise):
-    the scoped LLM re-check Cell (needs `ANTHROPIC_API_KEY`) and the slimemold
-    premature-closure gate (needs slimemold installed); `defn:` auto-verify.
-    These layer on top of the evidence gate, which already stands on its own.
+- **Phase 3 — DONE.** `loop.VerifyEvidence` verifies `sha:` (commit exists) and
+  `test:` (a matching test runs and passes); non-verifiable evidence is rejected
+  toward `waive`. `loop.Recheck` is a fenced resolved/unresolved oracle (a stull
+  Cell driven by `runtime.AnthropicModel`) that runs after evidence passes: it
+  degrades to skip without `ANTHROPIC_API_KEY` and fail-safe-releases on an
+  out-of-language answer; only a clean "unresolved" rejects. `loop.SlimemoldConcerns`
+  surfaces slimemold premature-closure/weak-basis flags as a NON-blocking advisory
+  at resolve (project-wide epistemic state, not a per-finding verdict, so it
+  informs rather than gates). `nitpick doctor` reports dependency availability.
+  All wired into `nitpick resolve`; decision logic unit-tested with scripted
+  models and a fake slimemold binary.
+  - **Deferred:** `defn:` auto-verification — defn needs a per-repo graph
+    (`defn init`), so it is honestly rejected (cite `sha:`/`test:` or `waive`)
+    until repo-managed defn is in scope.

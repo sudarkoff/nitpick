@@ -109,3 +109,30 @@ func TestStore_ReopenExistingDBIsIdempotent(t *testing.T) {
 		t.Fatalf("second Open: %v", err)
 	}
 }
+
+func TestStore_Get(t *testing.T) {
+	requireDolt(t)
+	s, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	repo := "github.com/x/y"
+	if err := s.Upsert(Record{Repo: repo, FindingID: "RAR-07", Skill: "rar", Severity: "P1",
+		Status: "open", Component: "sync", Recommendation: "add timeout"}); err != nil {
+		t.Fatalf("Upsert: %v", err)
+	}
+	got, err := s.Get(repo, "RAR-07")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if got == nil || got.FindingID != "RAR-07" || got.Recommendation != "add timeout" {
+		t.Fatalf("Get = %+v, want RAR-07 with recommendation", got)
+	}
+	missing, err := s.Get(repo, "RAR-99")
+	if err != nil {
+		t.Fatalf("Get missing: %v", err)
+	}
+	if missing != nil {
+		t.Errorf("Get missing = %+v, want nil", missing)
+	}
+}

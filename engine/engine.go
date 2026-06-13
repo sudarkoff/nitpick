@@ -7,6 +7,7 @@ package engine
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -331,4 +332,25 @@ func asString(v any) string {
 		return s
 	}
 	return ""
+}
+
+// Doctor reports the availability of nitpick's dependencies and what degrades
+// when one is missing.
+func Doctor(stdout io.Writer) int {
+	report := func(name string, ok bool, note string) {
+		mark := "MISSING"
+		if ok {
+			mark = "ok"
+		}
+		fmt.Fprintf(stdout, "  %-18s %-8s %s\n", name, mark, note)
+	}
+	has := func(bin string) bool { _, err := exec.LookPath(bin); return err == nil }
+	fmt.Fprintln(stdout, "nitpick doctor:")
+	report("dolt", has("dolt"), "required — findings database")
+	report("git", has("git"), "required — push detection + sha: evidence")
+	report("slimemold", has("slimemold"), "optional — false-completion advisory at resolve")
+	report("defn", has("defn"), "optional — defn: evidence (auto-verify not implemented yet)")
+	report("ANTHROPIC_API_KEY", os.Getenv("ANTHROPIC_API_KEY") != "", "optional — LLM re-check at resolve")
+	fmt.Fprintf(stdout, "  db dir: %s\n", DefaultDBDir())
+	return 0
 }

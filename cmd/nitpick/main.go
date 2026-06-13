@@ -1,6 +1,6 @@
 // Command nitpick records and queries reliability-architect-review findings in a
 // Dolt database, gates pushes to main on unresolved must-fix findings (via the
-// `hook` dispatcher), and wires itself into Claude Code (`install`).
+// `run` hook dispatcher), and wires itself into Claude Code (`install`).
 package main
 
 import (
@@ -21,17 +21,18 @@ const usage = `nitpick — reliability findings gate
 
 usage:
   nitpick init                                   create the findings database
+  nitpick doctor                                 report dependency availability
   nitpick install [binary] [--project] [--write] wire the gate into Claude Code hooks
-  nitpick hook                                   hook dispatcher (reads an event on stdin)
+  nitpick run                                    hook dispatcher (reads an event on stdin)
   nitpick review [--repo R] [--skill S] [--from FILE]
                                                  ingest RAR-NN findings (stdin if no --from)
   nitpick list   [--repo R] [--status S]         list findings (status: open|resolved|deferred)
-  nitpick resolve ID [--repo R] --evidence E     mark a finding fixed (phase 3 verifies)
+  nitpick resolve ID [--repo R] --evidence E     mark a finding fixed (evidence is verified)
   nitpick waive   ID [--repo R] --reason TEXT    defer a finding with a written reason
   nitpick defer   ID [--repo R]                  carry a finding forward
 
 The findings DB lives at $NITPICK_DB or ~/.local/share/nitpick/db.
---repo defaults to this repo's git origin.`
+--repo defaults to the current repo's git origin.`
 
 func main() { os.Exit(run(os.Args[1:], os.Stdout, os.Stderr)) }
 
@@ -44,6 +45,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	switch cmd {
 	case "init":
 		return cmdInit(rest, stdout, stderr)
+	case "doctor":
+		return engine.Doctor(stdout)
 	case "install":
 		return engine.Install(rest)
 	case "hook", "run":
@@ -160,7 +163,7 @@ func cmdResolve(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("resolve", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	repo := fs.String("repo", "", "repository identifier (default: git origin)")
-	evidence := fs.String("evidence", "", "evidence for the fix (sha:… / test:… / defn:… / alert:…)")
+	evidence := fs.String("evidence", "", "evidence for the fix (sha:… / test:…)")
 	if err := fs.Parse(rest); err != nil {
 		return 2
 	}
@@ -168,14 +171,55 @@ func cmdResolve(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "resolve: usage: nitpick resolve ID --evidence E")
 		return 2
 	}
-	dir, _ := os.Getwd()
-	v := loop.VerifyEvidence(dir, *evidence)
-	if !v.OK {
-		fmt.Fprintf(stderr, "resolve %s rejected: %s\n", id, v.Detail)
+	r := engine.ResolveRepo(*repo)
+	if r == "" {
+		fmt.Fprintln(stderr, "resolve: --repo required (could not detect git origin)")
+		return 2
+	}
+	store, err := findings.Open(engine.DefaultDBDir())
+	if err != nil {
+		fmt.Fprintf(stderr, "resolve: %v\n", err)
 		return 1
 	}
-	fmt.Fprintf(stdout, "evidence verified — %s\n", v.Detail)
-	return setStatus(*repo, id, "resolved", *evidence, "", stdout, stderr)
+	rec, err := store.Get(r, id)
+	if err != nil {
+		fmt.Fprintf(stderr, "resolve: %v\n", err)
+		return 1
+	}
+	if rec == nil {
+		fmt.Fprintf(stderr, "resolve: no finding %s for %s\n", id, r)
+		return 1
+	}
+
+	dir, _ := os.Getwd()
+
+	// Gate 1 — deterministic: the cited evidence must be real.
+	ev := loop.VerifyEvidence(dir, *evidence)
+	if !ev.OK {
+		fmt.Fprintf(stderr, "resolve %s rejected: %s\n", id, ev.Detail)
+		return 1
+	}
+	fmt.Fprintf(stdout, "evidence verified — %s\n", ev.Detail)
+
+	// Gate 2 — fenced oracle: does the evidence actually resolve the finding?
+	rc := loop.Recheck(*rec, *evidence, loop.AnthropicRaw)
+	if !rc.OK {
+		fmt.Fprintf(stderr, "resolve %s rejected: %s\n", id, rc.Detail)
+		return 1
+	}
+	fmt.Fprintf(stdout, "%s\n", rc.Detail)
+
+	// Advisory — slimemold (non-blocking).
+	if c := loop.SlimemoldConcerns(dir); c != "" {
+		fmt.Fprintf(stdout, "%s\n", c)
+	}
+
+	if err := store.SetStatus(r, id, "resolved", *evidence, ""); err != nil {
+		fmt.Fprintf(stderr, "resolve: %v\n", err)
+		return 1
+	}
+	fmt.Fprintf(stdout, "%s -> resolved\n", id)
+	return 0
 }
 
 func cmdWaive(args []string, stdout, stderr io.Writer) int {

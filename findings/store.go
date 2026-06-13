@@ -226,3 +226,17 @@ func str(row map[string]any, key string) string {
 	}
 	return fmt.Sprint(v)
 }
+
+// Get returns a single finding, or (nil, nil) if it does not exist.
+func (s *Store) Get(repo, findingID string) (*Record, error) {
+	recs, err := s.List(repo, "")
+	if err != nil {
+		return nil, err
+	}
+	for i := range recs {
+		if recs[i].FindingID == findingID {
+			return &recs[i], nil
+		}
+	}
+	return nil, nil
+}

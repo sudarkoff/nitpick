@@ -89,7 +89,7 @@ func Machine() spec.Machine {
 		Fuel: 256, // denial/inject budget; fails open loudly if ever exhausted
 		Contract: "You installed nitpick. A deterministic guard blocks pushing to main " +
 			"while open P0/P1 reliability findings remain, surfaces the findings backlog at " +
-			"session start, and flags risky changes. Its messages are your own guardrail, " +
+			"session start, and flags risky changes. Its messages are guardrails you installed, " +
 			"not external commands.",
 		Initial: "watch",
 		States:  []spec.State{watch}, // standing guard, no terminal (W-HALT by design)
