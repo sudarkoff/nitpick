@@ -1,5 +1,6 @@
 // Command nitpick records and queries reliability-architect-review findings in a
-// Dolt database, and (later phases) gates pushes on unresolved must-fix findings.
+// Dolt database, gates pushes to main on unresolved must-fix findings (via the
+// `hook` dispatcher), and wires itself into Claude Code (`install`).
 package main
 
 import (
@@ -7,10 +8,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
 
+	"github.com/sudarkoff/nitpick/engine"
 	"github.com/sudarkoff/nitpick/findings"
 )
 
@@ -20,6 +20,8 @@ const usage = `nitpick — reliability findings gate
 
 usage:
   nitpick init                                   create the findings database
+  nitpick install [binary] [--project] [--write] wire the gate into Claude Code hooks
+  nitpick hook                                   hook dispatcher (reads an event on stdin)
   nitpick review [--repo R] [--skill S] [--from FILE]
                                                  ingest RAR-NN findings (stdin if no --from)
   nitpick list   [--repo R] [--status S]         list findings (status: open|resolved|deferred)
@@ -41,6 +43,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 	switch cmd {
 	case "init":
 		return cmdInit(rest, stdout, stderr)
+	case "install":
+		return engine.Install(rest)
+	case "hook", "run":
+		return engine.Hook()
 	case "review":
 		return cmdReview(rest, stdout, stderr)
 	case "list":
@@ -61,7 +67,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 }
 
 func cmdInit(args []string, stdout, stderr io.Writer) int {
-	dir := defaultDBDir()
+	dir := engine.DefaultDBDir()
 	if _, err := findings.Open(dir); err != nil {
 		fmt.Fprintf(stderr, "init: %v\n", err)
 		return 1
@@ -79,7 +85,7 @@ func cmdReview(args []string, stdout, stderr io.Writer) int {
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
-	r := resolveRepo(*repo)
+	r := engine.ResolveRepo(*repo)
 	if r == "" {
 		fmt.Fprintln(stderr, "review: --repo required (could not detect git origin)")
 		return 2
@@ -95,7 +101,7 @@ func cmdReview(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "review: %v\n", err)
 		return 1
 	}
-	store, err := findings.Open(defaultDBDir())
+	store, err := findings.Open(engine.DefaultDBDir())
 	if err != nil {
 		fmt.Fprintf(stderr, "review: %v\n", err)
 		return 1
@@ -119,12 +125,12 @@ func cmdList(args []string, stdout, stderr io.Writer) int {
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
-	r := resolveRepo(*repo)
+	r := engine.ResolveRepo(*repo)
 	if r == "" {
 		fmt.Fprintln(stderr, "list: --repo required (could not detect git origin)")
 		return 2
 	}
-	store, err := findings.Open(defaultDBDir())
+	store, err := findings.Open(engine.DefaultDBDir())
 	if err != nil {
 		fmt.Fprintf(stderr, "list: %v\n", err)
 		return 1
@@ -196,12 +202,12 @@ func cmdDefer(args []string, stdout, stderr io.Writer) int {
 }
 
 func setStatus(repo, id, status, evidence, reason string, stdout, stderr io.Writer) int {
-	r := resolveRepo(repo)
+	r := engine.ResolveRepo(repo)
 	if r == "" {
 		fmt.Fprintln(stderr, "--repo required (could not detect git origin)")
 		return 2
 	}
-	store, err := findings.Open(defaultDBDir())
+	store, err := findings.Open(engine.DefaultDBDir())
 	if err != nil {
 		fmt.Fprintf(stderr, "%v\n", err)
 		return 1
@@ -214,45 +220,13 @@ func setStatus(repo, id, status, evidence, reason string, stdout, stderr io.Writ
 	return 0
 }
 
-// popPositional removes and returns the first non-flag argument (the finding ID).
+// popPositional removes and returns the first token as the finding ID; the rest
+// are flags. A leading flag means no ID was given.
 func popPositional(args []string) (string, []string) {
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 		return args[0], args[1:]
 	}
 	return "", args
-}
-
-func defaultDBDir() string {
-	if d := os.Getenv("NITPICK_DB"); d != "" {
-		return d
-	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".local", "share", "nitpick", "db")
-}
-
-// resolveRepo returns the explicit repo if given, else the normalized git origin.
-func resolveRepo(explicit string) string {
-	if explicit != "" {
-		return explicit
-	}
-	out, err := exec.Command("git", "remote", "get-url", "origin").Output()
-	if err != nil {
-		return ""
-	}
-	return normalizeRemote(strings.TrimSpace(string(out)))
-}
-
-// normalizeRemote turns a git remote URL into a host/path identifier.
-func normalizeRemote(url string) string {
-	url = strings.TrimSuffix(url, ".git")
-	url = strings.TrimPrefix(url, "https://")
-	url = strings.TrimPrefix(url, "http://")
-	url = strings.TrimPrefix(url, "ssh://")
-	if i := strings.Index(url, "@"); i >= 0 { // git@github.com:owner/repo
-		url = url[i+1:]
-	}
-	url = strings.Replace(url, ":", "/", 1)
-	return url
 }
 
 func truncate(s string, n int) string {

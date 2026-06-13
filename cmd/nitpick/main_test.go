@@ -5,20 +5,6 @@ import (
 	"testing"
 )
 
-func TestNormalizeRemote(t *testing.T) {
-	cases := map[string]string{
-		"https://github.com/sudarkoff/twocal.git":   "github.com/sudarkoff/twocal",
-		"https://github.com/sudarkoff/twocal":       "github.com/sudarkoff/twocal",
-		"git@github.com:sudarkoff/twocal.git":       "github.com/sudarkoff/twocal",
-		"ssh://git@github.com/sudarkoff/twocal.git": "github.com/sudarkoff/twocal",
-	}
-	for in, want := range cases {
-		if got := normalizeRemote(in); got != want {
-			t.Errorf("normalizeRemote(%q) = %q, want %q", in, got, want)
-		}
-	}
-}
-
 // popPositional contract: the finding ID must be the first token; anything after
 // is flags. A leading flag means no ID was given.
 func TestPopPositional(t *testing.T) {

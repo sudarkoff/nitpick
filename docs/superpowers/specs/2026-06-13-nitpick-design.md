@@ -115,6 +115,32 @@ when did we defer this, in which session, what changed.
   deploy-gating is conceptually ideal but the prod deploy is a GitHub Actions
   `workflow_dispatch`, not locally hookable — out of scope.
 
+## Implementation resolutions (from stull's real API, v0.1.0)
+
+- **Pure guards / impure dispatcher.** stull guards must be pure (no DB/FS). So
+  `nitpick hook` (the dispatcher) computes DB-derived facts — open-P0/P1 count,
+  whether this push targets `main` (needs `git`), the session summary — and
+  injects them as event fields (`event.nitpick_open_blockers`,
+  `event.nitpick_block_reason`, `event.nitpick_summary`, `event.nitpick_review_due`).
+  The machine's guards read those event fields via `event.<path>` Reads, exactly
+  as stull's `denyguard` reads `event.tool_input.command`.
+- **Push gate is hybrid.** Machine guard = `ToolIs(Bash) AND CommandMatches(/git
+  push/) AND open_blockers>0`. The command match is the in-machine lens; the
+  dispatcher sets `open_blockers>0` only when the push actually targets `main`
+  (it checks the branch) and Dolt has open P0/P1.
+- **Verification is CLI-side, not a hook machine.** `nitpick resolve` is a direct
+  CLI call, not a hook event, so Phase-3 evidence verification (SHA/test/defn) +
+  re-check + slimemold run inside the `resolve` code path, not inside the stull
+  machine. stull owns the *gate*; the CLI owns *verification*.
+- **Fuel = anti-brick, not "blocks forever".** stull's Fuel guarantees totality:
+  the gate blocks for up to `Fuel` push attempts, then fails open *loudly*
+  (stull's no-brick guarantee). Fuel is set generously (256); in practice a
+  finding is fixed or waived long before the budget.
+- **Wiring.** `nitpick hook` drives `runtime` (LoadContext -> enrich event with DB
+  facts -> Dispatch -> SaveContext -> Emit). `nitpick install` =
+  `compile.MergeHooks`. Sim tests use `sim.Run` (no model call); CI runs
+  `check.Validate`.
+
 ## The stull state machine
 
 ```
