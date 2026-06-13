@@ -1,0 +1,12 @@
+# Binaries
+/nitpick
+/bin/
+*.test
+*.out
+
+# Local findings DB (if created inside the repo for dev)
+/.nitpick-db/
+/tmp/
+
+# Editor
+.DS_Store
