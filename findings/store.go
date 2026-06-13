@@ -131,17 +131,12 @@ func (s *Store) List(repo, status string) ([]Record, error) {
 	if err != nil {
 		return nil, err
 	}
-	var parsed struct {
-		Rows []map[string]any `json:"rows"`
+	rows, err := parseRows(out)
+	if err != nil {
+		return nil, err
 	}
-	if strings.TrimSpace(out) == "" {
-		return nil, nil
-	}
-	if err := json.Unmarshal([]byte(out), &parsed); err != nil {
-		return nil, fmt.Errorf("parse dolt json: %w: %s", err, out)
-	}
-	recs := make([]Record, 0, len(parsed.Rows))
-	for _, row := range parsed.Rows {
+	recs := make([]Record, 0, len(rows))
+	for _, row := range rows {
 		recs = append(recs, Record{
 			Repo: str(row, "repo"), FindingID: str(row, "finding_id"),
 			Skill: str(row, "skill"), Severity: str(row, "severity"),
@@ -167,20 +162,53 @@ func (s *Store) dolt(args ...string) (string, error) {
 	return out.String(), nil
 }
 
-// commit stages and commits the working set, tolerating an empty changeset.
+// commit stages and commits the working set, skipping when there is nothing to
+// commit (e.g. a no-op CREATE TABLE IF NOT EXISTS on reopen).
 func (s *Store) commit(msg string) error {
+	changed, err := s.hasChanges()
+	if err != nil {
+		return err
+	}
+	if !changed {
+		return nil
+	}
 	if _, err := s.dolt("add", "-A"); err != nil {
 		return err
 	}
-	out, err := s.dolt("commit", "--author", commitAuthor, "-m", msg)
-	if err != nil {
-		if strings.Contains(err.Error(), "nothing to commit") {
-			return nil
-		}
+	if _, err := s.dolt("commit", "--author", commitAuthor, "-m", msg); err != nil {
 		return err
 	}
-	_ = out
 	return nil
+}
+
+// hasChanges reports whether the working set has uncommitted changes.
+func (s *Store) hasChanges() (bool, error) {
+	out, err := s.dolt("sql", "-q", "SELECT COUNT(*) AS n FROM dolt_status", "-r", "json")
+	if err != nil {
+		return false, err
+	}
+	rows, err := parseRows(out)
+	if err != nil {
+		return false, err
+	}
+	if len(rows) == 0 {
+		return false, nil
+	}
+	return str(rows[0], "n") != "0", nil
+}
+
+// parseRows unmarshals dolt's `-r json` output ({"rows":[...]}) into row maps.
+func parseRows(out string) ([]map[string]any, error) {
+	if strings.TrimSpace(out) == "" {
+		return nil, nil
+	}
+	var parsed struct {
+		Rows []map[string]any `json:"rows"`
+	}
+	if err := json.Unmarshal([]byte(out), &parsed); err != nil {
+		return nil, fmt.Errorf("parse dolt json: %w: %s", err, out)
+	}
+	return parsed.Rows, nil
 }
 
 // q renders a Go string as a single-quoted, escaped SQL string literal.

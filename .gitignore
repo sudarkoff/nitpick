@@ -10,3 +10,6 @@
 
 # Editor
 .DS_Store
+
+# Local bg-session isolation toggle (not shared)
+/.claude/settings.json

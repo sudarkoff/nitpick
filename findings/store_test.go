@@ -96,3 +96,16 @@ func TestStore_SetStatusAndReingestPreservesResolution(t *testing.T) {
 		t.Errorf("failure_mode = %q, want updated descriptive field", got[0].FailureMode)
 	}
 }
+
+func TestStore_ReopenExistingDBIsIdempotent(t *testing.T) {
+	requireDolt(t)
+	dir := t.TempDir()
+	if _, err := Open(dir); err != nil {
+		t.Fatalf("first Open: %v", err)
+	}
+	// Reopening runs CREATE TABLE IF NOT EXISTS again (a no-op): committing an
+	// empty changeset must not error.
+	if _, err := Open(dir); err != nil {
+		t.Fatalf("second Open: %v", err)
+	}
+}
