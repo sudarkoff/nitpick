@@ -211,3 +211,22 @@ acceptable; a brick is not. Dolt writes are transactional (commit per transition
 
 name `nitpick`; standalone Dolt at `~/.local/share/nitpick/db` (`$NITPICK_DB` override);
 trigger = PreToolUse push-to-main + SessionStart + Stop-watch; fail-open.
+
+## Implementation status (2026-06-13)
+
+- **Phase 1 — DONE, shipped.** `findings` (RAR-NN parser, Dolt store with
+  re-ingest preservation, severity-policy ingest) + CLI (`init/review/list/
+  resolve/waive/defer`). Tested + verified end-to-end.
+- **Phase 2 — DONE, shipped.** `machine` (stull gate: push-to-main Block,
+  SessionStart surface, Stop nudge; sim-tested, passes `check.Validate`) +
+  `engine` (event-enriching dispatcher `nitpick run`, `nitpick install` via
+  `compile.MergeHooks`). Verified: push-to-main with an open P0 blocks (exit 2);
+  resolving unblocks it.
+- **Phase 3 — deterministic core DONE.** `loop.VerifyEvidence` really verifies
+  `sha:` (commit exists) and `test:` (a matching test passes); non-verifiable
+  evidence is rejected toward `waive`. Wired into `nitpick resolve` (fake sha is
+  rejected, real sha resolves). Capstone loop verified end-to-end.
+  - **Remaining Phase-3 sub-work** (needs external services to build+exercise):
+    the scoped LLM re-check Cell (needs `ANTHROPIC_API_KEY`) and the slimemold
+    premature-closure gate (needs slimemold installed); `defn:` auto-verify.
+    These layer on top of the evidence gate, which already stands on its own.

@@ -12,6 +12,7 @@ import (
 
 	"github.com/sudarkoff/nitpick/engine"
 	"github.com/sudarkoff/nitpick/findings"
+	"github.com/sudarkoff/nitpick/loop"
 )
 
 const defaultSkill = "reliability-architect-review"
@@ -167,6 +168,13 @@ func cmdResolve(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "resolve: usage: nitpick resolve ID --evidence E")
 		return 2
 	}
+	dir, _ := os.Getwd()
+	v := loop.VerifyEvidence(dir, *evidence)
+	if !v.OK {
+		fmt.Fprintf(stderr, "resolve %s rejected: %s\n", id, v.Detail)
+		return 1
+	}
+	fmt.Fprintf(stdout, "evidence verified — %s\n", v.Detail)
 	return setStatus(*repo, id, "resolved", *evidence, "", stdout, stderr)
 }
 
