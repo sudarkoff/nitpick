@@ -22,7 +22,7 @@ const usage = `nitpick — reliability findings gate
 usage:
   nitpick init                                   set up THIS REPO (install the git pre-push gate)
   nitpick doctor                                 report dependency availability
-  nitpick install [binary] [--project] [--write] set up this MACHINE (db + skill + Claude Code hooks)
+  nitpick install [binary] [--project] [--dry-run] set up this MACHINE (db + skill + Claude Code hooks)
   nitpick run                                    hook dispatcher (reads an event on stdin)
   nitpick review [--repo R] [--skill S] [--from FILE]
                                                  ingest RAR-NN findings (stdin if no --from)

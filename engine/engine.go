@@ -173,15 +173,17 @@ func sensitiveChanged(dir string) []string {
 // directory, and merges nitpick's hook fragment into settings.json (idempotently,
 // with a backup). Per-repository setup (the git pre-push gate) is `nitpick init`.
 //
-//	nitpick install [binary] [--project] [--write]
+//	nitpick install [binary] [--project] [--dry-run]
 func Install(args []string) int {
-	write := false
+	dryRun := false
 	scope := "global"
 	binary := "nitpick"
 	for _, a := range args {
 		switch a {
+		case "--dry-run":
+			dryRun = true
 		case "--write":
-			write = true
+			// writing is the default now; --write is accepted for compatibility
 		case "--project":
 			scope = "project"
 		case "--global":
@@ -219,7 +221,7 @@ func Install(args []string) int {
 		return 1
 	}
 
-	if !write {
+	if dryRun {
 		fmt.Fprintf(os.Stderr, "would ensure findings database at %s\n", DefaultDBDir())
 		dests, _ := installSkillFiles(skillRoot, false)
 		for _, d := range dests {
@@ -230,7 +232,7 @@ func Install(args []string) int {
 		} else {
 			fmt.Fprintf(os.Stderr, "hooks: would add %d trigger entr(y/ies) to %s\n", added, target)
 		}
-		fmt.Fprintln(os.Stderr, "(dry run; re-run with --write to apply)")
+		fmt.Fprintln(os.Stderr, "(dry run — omit --dry-run to apply)")
 		fmt.Println(string(mergedJSON))
 		return 0
 	}

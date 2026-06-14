@@ -19,7 +19,7 @@ for the design. Phases 1–3 complete (the optional defn auto-verify is deferred
 ```bash
 go install github.com/sudarkoff/nitpick/cmd/nitpick@latest
 nitpick doctor             # check dependencies (dolt required; slimemold/defn/API key optional)
-nitpick install --write    # machine setup: findings DB + skill + Claude Code hooks
+nitpick install            # machine setup: findings DB + skill + Claude Code hooks  (preview: --dry-run)
 
 # then, in each repository you want gated from the terminal too:
 nitpick init               # repo setup: git pre-push gate (blocks ANY client)

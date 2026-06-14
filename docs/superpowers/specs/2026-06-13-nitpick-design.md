@@ -241,7 +241,7 @@ trigger = PreToolUse push-to-main + SessionStart + Stop-watch; fail-open.
 
 `nitpick install` now installs the skill, not just the hooks: the
 `reliability-architect-review` SKILL.md is vendored under `skills/` and embedded
-via `go:embed`, so a `go install`-ed binary carries it. `install [--write]`
+via `go:embed`, so a `go install`-ed binary carries it. `install`
 writes it to `<settings-dir>/skills/reliability-architect-review/` (backing up a
 differing existing copy to `.bak`) and merges the hook fragment. The shipped
 skill ends with a "Persisting findings to nitpick" step that runs
@@ -270,3 +270,11 @@ The DB init moved out of `init` (now repo-scoped) and into `install` (machine
 setup). `precheck` is the internal git-hook callback; `refsPushToMain` (pure ref
 parsing) and `initRepoAt`/`precheckAt` (dir-parameterized) are unit-tested, and
 the real `git push` → hook → block chain was verified against a bare remote.
+
+## install writes by default (2026-06-13)
+
+`nitpick install` now applies changes by default; `--dry-run` previews instead
+(the prior `--write` requirement is gone, accepted as a silent no-op for
+compatibility). Because installing now runs `dolt init`, `findings.Open` passes
+an explicit `--name`/`--email` to dolt so it no longer fails on a machine where
+dolt has no global identity configured.

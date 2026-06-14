@@ -56,7 +56,7 @@ func Open(dir string) (*Store, error) {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return nil, err
 		}
-		if _, err := s.dolt("init"); err != nil {
+		if _, err := s.dolt("init", "--name", "nitpick", "--email", "nitpick@localhost"); err != nil {
 			return nil, err
 		}
 	}
