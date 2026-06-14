@@ -20,9 +20,9 @@ const defaultSkill = "reliability-architect-review"
 const usage = `nitpick — reliability findings gate
 
 usage:
-  nitpick init                                   create the findings database
+  nitpick init                                   set up THIS REPO (install the git pre-push gate)
   nitpick doctor                                 report dependency availability
-  nitpick install [binary] [--project] [--write] wire the gate into Claude Code hooks
+  nitpick install [binary] [--project] [--write] set up this MACHINE (db + skill + Claude Code hooks)
   nitpick run                                    hook dispatcher (reads an event on stdin)
   nitpick review [--repo R] [--skill S] [--from FILE]
                                                  ingest RAR-NN findings (stdin if no --from)
@@ -44,7 +44,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 	cmd, rest := args[0], args[1:]
 	switch cmd {
 	case "init":
-		return cmdInit(rest, stdout, stderr)
+		return engine.InitRepo()
+	case "precheck":
+		return engine.Precheck()
 	case "doctor":
 		return engine.Doctor(stdout)
 	case "install":
@@ -68,16 +70,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "unknown command %q\n\n%s\n", cmd, usage)
 		return 2
 	}
-}
-
-func cmdInit(args []string, stdout, stderr io.Writer) int {
-	dir := engine.DefaultDBDir()
-	if _, err := findings.Open(dir); err != nil {
-		fmt.Fprintf(stderr, "init: %v\n", err)
-		return 1
-	}
-	fmt.Fprintf(stdout, "findings database ready at %s\n", dir)
-	return 0
 }
 
 func cmdReview(args []string, stdout, stderr io.Writer) int {

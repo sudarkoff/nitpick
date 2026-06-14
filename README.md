@@ -19,16 +19,22 @@ for the design. Phases 1–3 complete (the optional defn auto-verify is deferred
 ```bash
 go install github.com/sudarkoff/nitpick/cmd/nitpick@latest
 nitpick doctor             # check dependencies (dolt required; slimemold/defn/API key optional)
-nitpick init               # create the findings database
-nitpick install --write    # install the skill + wire the gate into Claude Code hooks
+nitpick install --write    # machine setup: findings DB + skill + Claude Code hooks
+
+# then, in each repository you want gated from the terminal too:
+nitpick init               # repo setup: git pre-push gate (blocks ANY client)
 ```
 
 Requires Go 1.26+ and the `dolt` CLI on PATH.
 
-`install` writes the bundled `reliability-architect-review` skill into
-`~/.claude/skills` and registers the gate hooks. That skill ends by running
-`nitpick review`, which is what records findings — so `nitpick list` reflects
-exactly what has been ingested (run a review to populate it).
+`nitpick install` is machine-wide setup: it ensures the findings DB, installs the
+bundled `reliability-architect-review` skill into `~/.claude/skills`, and registers
+the Claude Code gate hooks (which gate *Claude's* pushes). `nitpick init` is per-repo:
+it installs a git `pre-push` hook so a push to `main` from *any* client — your
+terminal or the agent — is checked (bypass with `git push --no-verify`).
+
+The installed skill ends by running `nitpick review`, which records findings, so
+`nitpick list` reflects exactly what has been ingested (run a review to populate it).
 
 ## Usage
 

@@ -168,9 +168,10 @@ func sensitiveChanged(dir string) []string {
 	return hits
 }
 
-// Install installs nitpick into Claude Code: it writes the embedded
-// reliability-architect-review skill into the skills directory and merges
-// nitpick's hook fragment into settings.json (idempotently, with a backup).
+// Install sets up nitpick on this machine: it ensures the findings database
+// exists, writes the embedded reliability-architect-review skill into the skills
+// directory, and merges nitpick's hook fragment into settings.json (idempotently,
+// with a backup). Per-repository setup (the git pre-push gate) is `nitpick init`.
 //
 //	nitpick install [binary] [--project] [--write]
 func Install(args []string) int {
@@ -219,6 +220,7 @@ func Install(args []string) int {
 	}
 
 	if !write {
+		fmt.Fprintf(os.Stderr, "would ensure findings database at %s\n", DefaultDBDir())
 		dests, _ := installSkillFiles(skillRoot, false)
 		for _, d := range dests {
 			fmt.Fprintf(os.Stderr, "would install skill -> %s\n", d)
@@ -232,6 +234,12 @@ func Install(args []string) int {
 		fmt.Println(string(mergedJSON))
 		return 0
 	}
+
+	if _, err := findings.Open(DefaultDBDir()); err != nil {
+		fmt.Fprintf(os.Stderr, "install: findings database: %v\n", err)
+		return 1
+	}
+	fmt.Fprintf(os.Stderr, "findings database ready at %s\n", DefaultDBDir())
 
 	dests, err := installSkillFiles(skillRoot, true)
 	if err != nil {

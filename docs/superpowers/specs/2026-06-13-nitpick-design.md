@@ -249,3 +249,24 @@ skill ends with a "Persisting findings to nitpick" step that runs
 emitted findings" to "findings in the DB". An engine test asserts the embedded
 skill contains every parser field label, the `FINDING RAR` header form, and the
 `nitpick review` call, so the skill and parser cannot drift apart silently.
+
+## install/init split + git pre-push gate (2026-06-13)
+
+Two setup scopes, matching `git init` conventions:
+
+- **`nitpick install`** — machine setup (global by default, or `--project`):
+  ensures the findings DB (`findings.Open`), installs the embedded skill, merges
+  the Claude Code hook fragment. The Claude Code hooks gate the *agent's* pushes.
+- **`nitpick init`** — repository setup: installs a git `pre-push` hook (in the
+  repo's hooks dir, resolved via `git rev-parse --git-path hooks`, backing up a
+  foreign hook to `.bak`). The hook calls `nitpick precheck`, which reads the
+  pushed refs on stdin and exits non-zero to block a push to `main` while open
+  P0/P1 findings remain. This closes the gap that the Claude Code hook can't:
+  a push typed directly in the terminal. It fails open if nitpick is not on PATH
+  and is bypassable with `git push --no-verify` (a git hook is a speed bump, not
+  a wall). Per-repo by nature: git hooks live in `.git/hooks` and are not shared.
+
+The DB init moved out of `init` (now repo-scoped) and into `install` (machine
+setup). `precheck` is the internal git-hook callback; `refsPushToMain` (pure ref
+parsing) and `initRepoAt`/`precheckAt` (dir-parameterized) are unit-tested, and
+the real `git push` → hook → block chain was verified against a bare remote.
