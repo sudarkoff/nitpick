@@ -15,7 +15,7 @@ func StatusForSeverity(sev string) string {
 // Ingest parses RAR-NN findings from text and upserts each into the store with
 // its policy-derived initial status. Returns the number of findings ingested.
 func Ingest(s *Store, repo, skill, sessionID, text string) (int, error) {
-	parsed, err := ParseRAR(text)
+	parsed, err := ParseFindings(text)
 	if err != nil {
 		return 0, err
 	}

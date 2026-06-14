@@ -39,9 +39,9 @@ The installed skill ends by running `nitpick review`, which records findings, so
 ## Usage
 
 ```bash
-nitpick review --repo github.com/you/proj --from findings.txt  # ingest RAR-NN findings
+nitpick review --repo github.com/you/proj --from findings.txt  # ingest NP-NN findings
 nitpick list --repo github.com/you/proj --status open          # show open findings
-nitpick resolve RAR-03 --evidence sha:abc123                    # mark fixed (evidence verified + re-checked)
-nitpick waive RAR-04 --reason "accepted risk until Q3 ..."      # defer with a reason
-nitpick defer RAR-05                                            # carry forward
+nitpick resolve NP-03 --evidence sha:abc123                    # mark fixed (evidence verified + re-checked)
+nitpick waive NP-04 --reason "accepted risk until Q3 ..."      # defer with a reason
+nitpick defer NP-05                                            # carry forward
 ```

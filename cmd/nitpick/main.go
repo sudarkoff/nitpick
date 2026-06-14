@@ -30,6 +30,7 @@ usage:
   nitpick resolve ID [--repo R] --evidence E     mark a finding fixed (evidence is verified)
   nitpick waive   ID [--repo R] --reason TEXT    defer a finding with a written reason
   nitpick defer   ID [--repo R]                  carry a finding forward
+  nitpick migrate [--repo R]                     rename legacy RAR- finding ids to NP-
 
 The findings DB lives at $NITPICK_DB or ~/.local/share/nitpick/db.
 --repo defaults to the current repo's git origin.`
@@ -63,6 +64,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return cmdWaive(rest, stdout, stderr)
 	case "defer":
 		return cmdDefer(rest, stdout, stderr)
+	case "migrate":
+		return cmdMigrate(rest, stdout, stderr)
 	case "-h", "--help", "help":
 		fmt.Fprintln(stdout, usage)
 		return 0
@@ -282,4 +285,34 @@ func truncate(s string, n int) string {
 		return s[:n]
 	}
 	return s[:n-1] + "…"
+}
+
+func cmdMigrate(args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("migrate", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	repo := fs.String("repo", "", "repository identifier (default: git origin)")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	r := engine.ResolveRepo(*repo)
+	if r == "" {
+		fmt.Fprintln(stderr, "migrate: --repo required (could not detect git origin)")
+		return 2
+	}
+	store, err := findings.Open(engine.DefaultDBDir())
+	if err != nil {
+		fmt.Fprintf(stderr, "migrate: %v\n", err)
+		return 1
+	}
+	n, err := store.MigrateIDs(r)
+	if err != nil {
+		fmt.Fprintf(stderr, "migrate: %v\n", err)
+		return 1
+	}
+	if n == 0 {
+		fmt.Fprintln(stdout, "nothing to migrate (no legacy RAR- findings)")
+		return 0
+	}
+	fmt.Fprintf(stdout, "migrated %d finding(s): RAR- -> NP- for %s\n", n, r)
+	return 0
 }

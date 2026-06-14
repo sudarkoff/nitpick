@@ -2,24 +2,24 @@ package findings
 
 import "testing"
 
-func TestParseRAR_SingleFinding(t *testing.T) {
-	input := `FINDING RAR-01 [P1]
+func TestParseFindings_SingleFinding(t *testing.T) {
+	input := `FINDING NP-01 [P1]
 Promise at risk: syncs propagate in seconds
 Component: apps/api/internal/sync
 Failure mode: external API hangs with no timeout, goroutine leaks
 Detection gap: undetected
 Recommendation: add context deadline to all outbound HTTP calls`
 
-	got, err := ParseRAR(input)
+	got, err := ParseFindings(input)
 	if err != nil {
-		t.Fatalf("ParseRAR returned error: %v", err)
+		t.Fatalf("ParseFindings returned error: %v", err)
 	}
 	if len(got) != 1 {
 		t.Fatalf("expected 1 finding, got %d", len(got))
 	}
 	f := got[0]
-	if f.ID != "RAR-01" {
-		t.Errorf("ID = %q, want RAR-01", f.ID)
+	if f.ID != "NP-01" {
+		t.Errorf("ID = %q, want NP-01", f.ID)
 	}
 	if f.Severity != "P1" {
 		t.Errorf("Severity = %q, want P1", f.Severity)
@@ -41,10 +41,21 @@ Recommendation: add context deadline to all outbound HTTP calls`
 	}
 }
 
-func TestParseRAR_MultilineFieldsAndMultipleFindings(t *testing.T) {
+// Legacy RAR- headers must still parse so older review text keeps ingesting.
+func TestParseFindings_LegacyRARPrefix(t *testing.T) {
+	got, err := ParseFindings("FINDING RAR-09 [P0]\nComponent: worker\nRecommendation: fix")
+	if err != nil {
+		t.Fatalf("ParseFindings: %v", err)
+	}
+	if len(got) != 1 || got[0].ID != "RAR-09" || got[0].Severity != "P0" {
+		t.Fatalf("legacy RAR parse = %+v, want [RAR-09 P0]", got)
+	}
+}
+
+func TestParseFindings_MultilineFieldsAndMultipleFindings(t *testing.T) {
 	input := `Here is the review output:
 
-FINDING RAR-02 [P0]
+FINDING NP-02 [P0]
 Promise at risk: events never get lost or duplicated
 Component: apps/worker
 Failure mode: job stuck in processing forever
@@ -53,7 +64,7 @@ Detection gap: undetected for >1h
 Recommendation: add a watchdog that requeues
   jobs older than 2x the expected interval
 
-FINDING RAR-03 [P2]
+FINDING NP-03 [P2]
 Promise at risk: we alert you if sync breaks
 Component: apps/api/internal/webhooks
 Failure mode: subscription expiry only caught on safety-net poll
@@ -62,14 +73,14 @@ Recommendation: track last inbound webhook per subscription
 
 That concludes the review.`
 
-	got, err := ParseRAR(input)
+	got, err := ParseFindings(input)
 	if err != nil {
-		t.Fatalf("ParseRAR error: %v", err)
+		t.Fatalf("ParseFindings error: %v", err)
 	}
 	if len(got) != 2 {
 		t.Fatalf("expected 2 findings, got %d", len(got))
 	}
-	if got[0].ID != "RAR-02" || got[0].Severity != "P0" {
+	if got[0].ID != "NP-02" || got[0].Severity != "P0" {
 		t.Errorf("finding 0 header = %q %q", got[0].ID, got[0].Severity)
 	}
 	if got[0].FailureMode != "job stuck in processing forever because no watchdog kills stale jobs" {
@@ -78,7 +89,7 @@ That concludes the review.`
 	if got[0].Recommendation != "add a watchdog that requeues jobs older than 2x the expected interval" {
 		t.Errorf("multiline Recommendation = %q", got[0].Recommendation)
 	}
-	if got[1].ID != "RAR-03" || got[1].Severity != "P2" {
+	if got[1].ID != "NP-03" || got[1].Severity != "P2" {
 		t.Errorf("finding 1 header = %q %q", got[1].ID, got[1].Severity)
 	}
 	if got[1].Component != "apps/api/internal/webhooks" {

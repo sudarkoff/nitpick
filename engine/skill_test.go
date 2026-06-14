@@ -18,7 +18,7 @@ func TestEmbeddedSkill_MatchesParserAndIngestContract(t *testing.T) {
 	}
 	s := string(b)
 	for _, want := range []string{
-		"FINDING RAR", "Promise at risk", "Component", "Failure mode",
+		"FINDING NP", "Promise at risk", "Component", "Failure mode",
 		"Detection gap", "Recommendation", "nitpick review", "nitpick list",
 	} {
 		if !strings.Contains(s, want) {

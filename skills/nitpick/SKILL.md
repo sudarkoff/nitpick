@@ -10,7 +10,7 @@ description: This repository's reliability findings ("nitpicks"). Use whenever t
 ## Mode A — Query existing findings (do NOT re-review)
 
 Use when the request asks *about* findings — counts, status, what is left. Examples:
-"how many P1 nitpicks are open?", "what's deferred?", "is RAR-03 still open?",
+"how many P1 nitpicks are open?", "what's deferred?", "is NP-03 still open?",
 "anything blocking a push to main?".
 
 Answer from the CLI; do not run a new review:
@@ -23,7 +23,7 @@ Answer from the CLI; do not run a new review:
 
 Use when the request asks to *do* a review — "nitpick please", "nitpick this",
 "run a nitpick", before shipping or merging, after an incident. Work through the
-framework below, emit findings in the `FINDING RAR-NN` format, then persist them
+framework below, emit findings in the `FINDING NP-NN` format, then persist them
 (see "Persisting findings to nitpick" at the end) so the gate can enforce them.
 
 If the request is ambiguous between the two modes, ask which the user wants.
@@ -153,7 +153,7 @@ These appear repeatedly across systems. Flag every instance found.
 Structure findings as:
 
 ```
-FINDING RAR-01 [P0/P1/P2/P3]
+FINDING NP-01 [P0/P1/P2/P3]
 Promise at risk: <exact claim being made to users>
 Component: <file, service, or layer>
 Failure mode: <what breaks and how>
@@ -162,9 +162,9 @@ Recommendation: <specific, implementable fix>
 ```
 
 **Finding IDs:** Give every finding a stable, human-readable ID of the form
-`RAR-NN`, numbered sequentially (`RAR-01`, `RAR-02`, …) in order of appearance,
+`NP-NN`, numbered sequentially (`NP-01`, `NP-02`, …) in order of appearance,
 regardless of severity. The ID is so the reader can refer to a finding ("close
-RAR-03") without retyping its title. Number across the *whole* review (do not
+NP-03") without retyping its title. Number across the *whole* review (do not
 restart per phase or per severity), and never renumber a finding once assigned —
 if severity changes on re-review, keep the ID and change only the `[Pn]` tag. If
 the review produces a summary list, refer to findings by ID there too.
@@ -214,11 +214,11 @@ The review is not complete until its findings are saved. After emitting every
 
 3. Confirm the output reads `ingested N findings`, where N equals the number of
    findings above. If it reports `ingested 0 findings`, the format drifted —
-   verify each header line is exactly `FINDING RAR-NN [Pn]` (one of P0/P1/P2/P3)
+   verify each header line is exactly `FINDING NP-NN [Pn]` (one of P0/P1/P2/P3)
    with nothing after the bracket, then re-run.
 
 nitpick keys findings by the repository's git origin and by stable ID
-(`RAR-NN`), so re-running the review updates findings in place — it never
+(`NP-NN`), so re-running the review updates findings in place — it never
 reopens anything already resolved or waived. Once ingested, P0/P1 findings block
 a push to `main` until they are fixed (`nitpick resolve <ID> --evidence …`) or
 waived with a reason (`nitpick waive <ID> --reason …`); P2/P3 are filed for

@@ -290,3 +290,13 @@ with a two-mode dispatch: **Mode A — query** existing findings via `nitpick li
 `nitpick review`. Finding IDs remain `RAR-NN` (renaming the ID scheme is a
 separate migration). The embed path, install destination
 (`~/.claude/skills/nitpick/`), and the `--skill` default label all follow.
+
+## Finding ID scheme renamed RAR- -> NP- (2026-06-13)
+
+Finding IDs are now `NP-NN` (nitpick) instead of `RAR-NN`. The parser accepts
+both prefixes (NP- canonical, RAR- legacy) so old review text still ingests;
+`ParseRAR` was renamed `ParseFindings`. `nitpick migrate [--repo R]`
+(`Store.MigrateIDs`) renames stored `RAR-NN` rows to `NP-NN` in place, preserving
+status/evidence/waiver/timestamps, idempotently. The skill emits `FINDING NP-NN`
+and its ID guidance/examples use NP-. (The `rar/` package in the original
+architecture sketch was never built — the parser lives in `findings/`.)

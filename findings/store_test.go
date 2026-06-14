@@ -136,3 +136,47 @@ func TestStore_Get(t *testing.T) {
 		t.Errorf("Get missing = %+v, want nil", missing)
 	}
 }
+
+func TestStore_MigrateIDs(t *testing.T) {
+	requireDolt(t)
+	s, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	repo := "github.com/x/y"
+	// a legacy RAR finding that has already been resolved (status must survive)
+	if err := s.Upsert(Record{Repo: repo, FindingID: "RAR-01", Skill: "nitpick", Severity: "P1",
+		Status: "open", Component: "sync"}); err != nil {
+		t.Fatalf("Upsert: %v", err)
+	}
+	if err := s.SetStatus(repo, "RAR-01", "resolved", "sha:abc123", ""); err != nil {
+		t.Fatalf("SetStatus: %v", err)
+	}
+	// an already-NP finding that must be left untouched
+	if err := s.Upsert(Record{Repo: repo, FindingID: "NP-02", Skill: "nitpick", Severity: "P2", Status: "deferred"}); err != nil {
+		t.Fatalf("Upsert NP-02: %v", err)
+	}
+
+	n, err := s.MigrateIDs(repo)
+	if err != nil {
+		t.Fatalf("MigrateIDs: %v", err)
+	}
+	if n != 1 {
+		t.Fatalf("migrated %d, want 1 (only the RAR finding)", n)
+	}
+	// RAR-01 is now NP-01 with status + evidence preserved
+	got, err := s.Get(repo, "NP-01")
+	if err != nil || got == nil {
+		t.Fatalf("Get NP-01: %v (got %+v)", err, got)
+	}
+	if got.Status != "resolved" || got.Evidence != "sha:abc123" {
+		t.Errorf("migrated finding lost lifecycle: status=%q evidence=%q", got.Status, got.Evidence)
+	}
+	if old, _ := s.Get(repo, "RAR-01"); old != nil {
+		t.Errorf("RAR-01 should be gone after migration, got %+v", old)
+	}
+	// idempotent
+	if n2, _ := s.MigrateIDs(repo); n2 != 0 {
+		t.Errorf("second MigrateIDs migrated %d, want 0", n2)
+	}
+}

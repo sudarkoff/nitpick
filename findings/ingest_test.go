@@ -17,14 +17,14 @@ func TestIngest_AppliesSeverityPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	text := `FINDING RAR-01 [P0]
+	text := `FINDING NP-01 [P0]
 Promise at risk: events never lost
 Component: worker
 Failure mode: stuck job
 Detection gap: undetected
 Recommendation: watchdog
 
-FINDING RAR-02 [P3]
+FINDING NP-02 [P3]
 Promise at risk: tidy logs
 Component: logs
 Failure mode: noisy
@@ -39,11 +39,11 @@ Recommendation: tune`
 		t.Fatalf("Ingest count = %d, want 2", n)
 	}
 	open, _ := s.List("github.com/x/y", "open")
-	if len(open) != 1 || open[0].FindingID != "RAR-01" {
-		t.Errorf("open = %+v, want [RAR-01]", open)
+	if len(open) != 1 || open[0].FindingID != "NP-01" {
+		t.Errorf("open = %+v, want [NP-01]", open)
 	}
 	deferred, _ := s.List("github.com/x/y", "deferred")
-	if len(deferred) != 1 || deferred[0].FindingID != "RAR-02" {
-		t.Errorf("deferred = %+v, want [RAR-02]", deferred)
+	if len(deferred) != 1 || deferred[0].FindingID != "NP-02" {
+		t.Errorf("deferred = %+v, want [NP-02]", deferred)
 	}
 }

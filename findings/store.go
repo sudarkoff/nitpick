@@ -240,3 +240,35 @@ func (s *Store) Get(repo, findingID string) (*Record, error) {
 	}
 	return nil, nil
 }
+
+// MigrateIDs renames legacy RAR-NN findings to NP-NN for a repo, preserving all
+// fields (status, evidence, waiver, timestamps). Returns the number migrated.
+// Idempotent — a second run finds nothing to do.
+func (s *Store) MigrateIDs(repo string) (int, error) {
+	out, err := s.dolt("sql", "-q",
+		fmt.Sprintf("SELECT COUNT(*) AS n FROM findings WHERE repo=%s AND finding_id LIKE 'RAR-%%'", q(repo)),
+		"-r", "json")
+	if err != nil {
+		return 0, err
+	}
+	rows, err := parseRows(out)
+	if err != nil {
+		return 0, err
+	}
+	n := 0
+	if len(rows) > 0 {
+		fmt.Sscanf(str(rows[0], "n"), "%d", &n)
+	}
+	if n == 0 {
+		return 0, nil
+	}
+	upd := fmt.Sprintf("UPDATE findings SET finding_id = CONCAT('NP-', SUBSTRING(finding_id, 5)) "+
+		"WHERE repo=%s AND finding_id LIKE 'RAR-%%';", q(repo))
+	if _, err := s.dolt("sql", "-q", upd); err != nil {
+		return 0, err
+	}
+	if err := s.commit(fmt.Sprintf("nitpick: migrate %d RAR id(s) -> NP for %s", n, repo)); err != nil {
+		return 0, err
+	}
+	return n, nil
+}
