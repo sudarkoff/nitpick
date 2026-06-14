@@ -28,10 +28,9 @@ var pushRe = regexp.MustCompile(`(?i)\bgit\s+push\b`)
 // sensitivePaths flags files whose change warrants a reliability review.
 var sensitivePaths = regexp.MustCompile(`(?i)(sync|webhook|queue|jobs?|worker|pool|health|/db/|client|poll)`)
 
-// isPushToMain reports whether a shell command pushes to the main branch, given
-// the current branch. An explicit refspec wins over the branch; a bare push
-// falls back to the current branch.
-func isPushToMain(command, branch string) bool {
+// isPushToOrigin reports whether a shell command pushes to the "origin" remote,
+// on any branch. A bare `git push` (no remote) defaults to origin.
+func isPushToOrigin(command string) bool {
 	if !pushRe.MatchString(command) {
 		return false
 	}
@@ -52,19 +51,10 @@ func isPushToMain(command, branch string) bool {
 			nonFlags = append(nonFlags, f)
 		}
 	}
-	var refspecs []string
-	if len(nonFlags) > 1 { // first non-flag is the remote
-		refspecs = nonFlags[1:]
+	if len(nonFlags) == 0 {
+		return true // `git push` -> defaults to origin
 	}
-	for _, r := range refspecs {
-		if r == "main" || strings.HasSuffix(r, ":main") {
-			return true
-		}
-	}
-	if len(refspecs) > 0 {
-		return false // an explicit non-main ref
-	}
-	return branch == "main" // bare push -> current branch
+	return nonFlags[0] == "origin" // first non-flag is the remote
 }
 
 // Hook is the live dispatcher: read one hook event on stdin, enrich it with
@@ -104,7 +94,7 @@ func enrichEvent(event map[string]any) {
 	switch asString(event["hook_event_name"]) {
 	case "PreToolUse":
 		cmd := commandOf(event)
-		if cmd == "" || !isPushToMain(cmd, gitBranch(dir)) {
+		if cmd == "" || !isPushToOrigin(cmd) {
 			return
 		}
 		open, _ := store.List(repo, "open")
@@ -141,7 +131,7 @@ func blockReason(open []findings.Record) string {
 
 func summaryText(repo string, open, deferred int) string {
 	return fmt.Sprintf("nitpick: %d open P0/P1 and %d deferred reliability finding(s) for %s. "+
-		"`nitpick list --status open` to see what blocks a push to main.", open, deferred, repo)
+		"`nitpick list --status open` to see what blocks a push to origin (any branch).", open, deferred, repo)
 }
 
 func nudgeText(paths []string) string {
@@ -150,7 +140,7 @@ func nudgeText(paths []string) string {
 		sample = sample[:3]
 	}
 	return fmt.Sprintf("nitpick: reliability-sensitive paths changed with no review on record (e.g. %s). "+
-		"Consider running reliability-architect-review before pushing to main.", strings.Join(sample, ", "))
+		"Consider running reliability-architect-review before pushing to origin.", strings.Join(sample, ", "))
 }
 
 // sensitiveChanged returns changed tracked files (vs HEAD) matching sensitivePaths.
@@ -324,14 +314,6 @@ func RepoForDir(dir string) string {
 		return ""
 	}
 	return normalizeRemote(strings.TrimSpace(out))
-}
-
-func gitBranch(dir string) string {
-	out, err := git(dir, "rev-parse", "--abbrev-ref", "HEAD")
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(out)
 }
 
 func git(dir string, args ...string) (string, error) {

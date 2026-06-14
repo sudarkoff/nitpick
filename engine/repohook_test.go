@@ -8,24 +8,6 @@ import (
 	"testing"
 )
 
-func TestRefsPushToMain(t *testing.T) {
-	cases := []struct {
-		name, stdin string
-		want        bool
-	}{
-		{"push to main", "abc 111 refs/heads/main 000", true},
-		{"feature only", "abc 111 refs/heads/feature 222", false},
-		{"main among several", "a 1 refs/heads/feat 2\nb 3 refs/heads/main 4", true},
-		{"empty", "", false},
-		{"main-lookalike branch", "a 1 refs/heads/main-thing 2", false},
-	}
-	for _, tc := range cases {
-		if got := refsPushToMain(tc.stdin); got != tc.want {
-			t.Errorf("%s: refsPushToMain=%v want %v", tc.name, got, tc.want)
-		}
-	}
-}
-
 func TestInitRepoAt(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not on PATH")
@@ -51,5 +33,12 @@ func TestInitRepoAt(t *testing.T) {
 	}
 	if rc := initRepoAt(dir); rc != 0 { // idempotent
 		t.Fatalf("second initRepoAt rc=%d", rc)
+	}
+}
+
+func TestPrecheckAt_NonOriginRemoteAllowed(t *testing.T) {
+	// A push to a non-origin remote is not gated, regardless of findings.
+	if rc := precheckAt(t.TempDir(), "upstream"); rc != 0 {
+		t.Errorf("push to non-origin remote should be allowed, got rc=%d", rc)
 	}
 }

@@ -2,7 +2,7 @@
 
 A Claude Code gate that runs the bundled `nitpick` reliability-review skill at the right moments,
 files every finding in a [Dolt](https://www.dolthub.com/) database, blocks a push to
-`main` until the must-fix (P0/P1) findings are genuinely fixed — or waived with a written
+`origin` (any branch) until the must-fix (P0/P1) findings are genuinely fixed — or waived with a written
 reason — and hands the rest forward with enough context to fix later.
 
 Built on [stull](https://github.com/justinstimatze/stull) (guarded hook state machines),
@@ -30,7 +30,7 @@ Requires Go 1.26+ and the `dolt` CLI on PATH.
 `nitpick install` is machine-wide setup: it ensures the findings DB, installs the
 bundled `nitpick` skill (the renamed reliability review) into `~/.claude/skills`, and registers
 the Claude Code gate hooks (which gate *Claude's* pushes). `nitpick init` is per-repo:
-it installs a git `pre-push` hook so a push to `main` from *any* client — your
+it installs a git `pre-push` hook so a push to `origin` (any branch) from *any* client — your
 terminal or the agent — is checked (bypass with `git push --no-verify`).
 
 The installed skill ends by running `nitpick review`, which records findings, so

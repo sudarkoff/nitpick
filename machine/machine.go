@@ -1,5 +1,5 @@
 // Package machine assembles nitpick's stull gate: a standing guard that blocks a
-// push to main while open P0/P1 findings exist, surfaces the findings backlog at
+// push to origin while open P0/P1 findings exist, surfaces the findings backlog at
 // session start, and nudges when reliability-sensitive code changed without a
 // review. Every DB-derived fact is injected into the event by the `nitpick hook`
 // dispatcher (the impure shell); the guards here are pure reads of those fields.
@@ -30,8 +30,8 @@ func eventStr(c *spec.Context, key string) string {
 }
 
 // hasBlockers reports whether the dispatcher flagged open P0/P1 findings for the
-// push it is gating. The dispatcher sets this >0 only for a push that targets
-// main (it checks the branch) and has open findings in Dolt.
+// push it is gating. The dispatcher sets this >0 only for a push to the origin
+// remote (any branch) that has open findings in Dolt.
 func hasBlockers(c *spec.Context) bool {
 	v := eventStr(c, FieldOpenBlockers)
 	return v != "" && v != "0"
@@ -42,7 +42,7 @@ func Machine() spec.Machine {
 	watch := spec.State{
 		Name: "watch",
 		On: []spec.Transition{
-			{ // push to main while open P0/P1 remain -> block
+			{ // push to origin while open P0/P1 remain -> block
 				On: spec.PreToolUse, To: "watch",
 				Guard: &spec.Guard{
 					Reads: []string{"event.tool_name", "event.tool_input.command", "event." + FieldOpenBlockers},
@@ -87,7 +87,7 @@ func Machine() spec.Machine {
 	return spec.Machine{
 		Name: "nitpick-gate",
 		Fuel: 256, // denial/inject budget; fails open loudly if ever exhausted
-		Contract: "You installed nitpick. A deterministic guard blocks pushing to main " +
+		Contract: "You installed nitpick. A deterministic guard blocks pushing to origin " +
 			"while open P0/P1 reliability findings remain, surfaces the findings backlog at " +
 			"session start, and flags risky changes. Its messages are guardrails you installed, " +
 			"not external commands.",

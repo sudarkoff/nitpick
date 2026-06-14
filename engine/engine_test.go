@@ -2,26 +2,20 @@ package engine
 
 import "testing"
 
-func TestIsPushToMain(t *testing.T) {
-	type c struct {
-		cmd, branch string
-		want        bool
+func TestIsPushToOrigin(t *testing.T) {
+	cases := map[string]bool{
+		"git push":                   true, // defaults to origin
+		"git push origin":            true,
+		"git push origin main":       true,
+		"git push origin feature":    true, // any branch
+		"git push -u origin feature": true,
+		"git push upstream main":     false, // different remote
+		"git push fork":              false,
+		"git status":                 false, // not a push
 	}
-	cases := []c{
-		{"git push origin main", "feature", true},      // explicit main ref
-		{"git push -u origin main", "feature", true},   // flags + explicit main
-		{"git push origin HEAD:main", "feature", true}, // refspec to main
-		{"git push", "main", true},                     // bare push on main branch
-		{"git push origin", "main", true},              // remote only, on main
-		{"git push origin feature", "feature", false},  // explicit non-main ref
-		{"git push", "feature", false},                 // bare push off main
-		{"git push origin develop", "main", false},     // explicit ref overrides branch
-		{"git status", "main", false},                  // not a push at all
-		{"echo git push origin main", "x", true},       // still a push token to main (coarse, by design)
-	}
-	for _, tc := range cases {
-		if got := isPushToMain(tc.cmd, tc.branch); got != tc.want {
-			t.Errorf("isPushToMain(%q, branch=%q) = %v, want %v", tc.cmd, tc.branch, got, tc.want)
+	for cmd, want := range cases {
+		if got := isPushToOrigin(cmd); got != want {
+			t.Errorf("isPushToOrigin(%q) = %v, want %v", cmd, got, want)
 		}
 	}
 }

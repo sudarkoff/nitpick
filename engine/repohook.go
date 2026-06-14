@@ -14,8 +14,8 @@ import (
 // prePushHook is the git pre-push script nitpick init installs. It fails open if
 // nitpick is not on PATH, and the user can always bypass with --no-verify.
 const prePushHook = `#!/bin/sh
-# nitpick pre-push gate — blocks a push to main while open P0/P1 reliability
-# findings remain. Managed by 'nitpick init'. Bypass with 'git push --no-verify'.
+# nitpick pre-push gate — blocks a push to origin (any branch) while open P0/P1
+# reliability findings remain. Managed by 'nitpick init'. Bypass: 'git push --no-verify'.
 command -v nitpick >/dev/null 2>&1 || exit 0
 exec nitpick precheck "$@"
 `
@@ -55,22 +55,27 @@ func initRepoAt(dir string) int {
 		return 1
 	}
 	fmt.Fprintf(os.Stderr, "installed nitpick pre-push gate -> %s\n", dest)
-	fmt.Fprintln(os.Stderr, "pushes to main from any client now check open P0/P1 findings (bypass: git push --no-verify)")
+	fmt.Fprintln(os.Stderr, "pushes to origin from any client now check open P0/P1 findings (bypass: git push --no-verify)")
 	return 0
 }
 
-// Precheck is the git pre-push callback: it reads the pushed refs on stdin and
-// blocks (exit 1) a push to main while open P0/P1 findings remain. It fails open
-// (exit 0) on any internal error so a nitpick problem never wedges pushing.
+// Precheck is the git pre-push callback (`nitpick precheck <remote> <url>`): it
+// blocks (exit 1) a push to the origin remote, on any branch, while open P0/P1
+// findings remain. It fails open (exit 0) on any internal error so a nitpick
+// problem never wedges pushing.
 func Precheck() int {
-	data, _ := io.ReadAll(os.Stdin)
+	_, _ = io.Copy(io.Discard, os.Stdin) // drain the refs git writes to the hook
+	remote := ""
+	if len(os.Args) >= 3 {
+		remote = os.Args[2] // os.Args = [nitpick, precheck, <remote>, <url>]
+	}
 	wd, _ := os.Getwd()
-	return precheckAt(wd, string(data))
+	return precheckAt(wd, remote)
 }
 
-func precheckAt(dir, stdin string) int {
-	if !refsPushToMain(stdin) {
-		return 0
+func precheckAt(dir, remote string) int {
+	if remote != "" && remote != "origin" {
+		return 0 // only gate pushes to origin
 	}
 	repo := RepoForDir(dir)
 	if repo == "" {
@@ -84,26 +89,12 @@ func precheckAt(dir, stdin string) int {
 	if err != nil || len(open) == 0 {
 		return 0
 	}
-	fmt.Fprintf(os.Stderr, "nitpick: push to main blocked — %d open P0/P1 reliability finding(s):\n", len(open))
+	fmt.Fprintf(os.Stderr, "nitpick: push to origin blocked — %d open P0/P1 reliability finding(s):\n", len(open))
 	for _, r := range open {
 		fmt.Fprintf(os.Stderr, "  - %s [%s] %s — %s\n", r.FindingID, r.Severity, r.Component, r.Recommendation)
 	}
 	fmt.Fprintln(os.Stderr, "Fix (`nitpick resolve <ID> --evidence …`) or waive (`nitpick waive <ID> --reason …`), or bypass with `git push --no-verify`.")
 	return 1
-}
-
-// refsPushToMain reports whether git's pre-push stdin includes a push whose
-// remote ref is exactly refs/heads/main. Each line is:
-//
-//	<local ref> <local oid> <remote ref> <remote oid>
-func refsPushToMain(stdin string) bool {
-	for _, line := range strings.Split(stdin, "\n") {
-		f := strings.Fields(line)
-		if len(f) >= 3 && f[2] == "refs/heads/main" {
-			return true
-		}
-	}
-	return false
 }
 
 func gitHooksDir(dir string) (string, error) {

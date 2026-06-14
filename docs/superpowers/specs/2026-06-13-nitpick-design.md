@@ -300,3 +300,14 @@ both prefixes (NP- canonical, RAR- legacy) so old review text still ingests;
 status/evidence/waiver/timestamps, idempotently. The skill emits `FINDING NP-NN`
 and its ID guidance/examples use NP-. (The `rar/` package in the original
 architecture sketch was never built — the parser lives in `findings/`.)
+
+## Gate scope widened: push to origin, any branch (2026-06-13)
+
+The gate now blocks a push to the **origin** remote on **any branch**, not just
+`main`. Dispatcher: `isPushToMain(cmd, branch)` -> `isPushToOrigin(cmd)` (a bare
+`git push` defaults to origin; an explicit non-origin remote is not gated; the
+branch no longer matters, so `gitBranch` is gone). Git hook: `precheck` now reads
+the remote name git passes as the hook argument and gates when it is `origin`
+(any ref), replacing the `refs/heads/main` stdin check (`refsPushToMain` removed).
+Note this also gates feature-branch pushes to origin while open P0/P1 findings
+remain — intentional.
