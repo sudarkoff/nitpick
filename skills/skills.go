@@ -7,5 +7,5 @@ import "embed"
 
 // FS holds every embedded skill directory, rooted at the skill name.
 //
-//go:embed reliability-architect-review
+//go:embed nitpick
 var FS embed.FS

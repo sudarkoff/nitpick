@@ -1,9 +1,32 @@
 ---
-name: reliability-architect-review
-description: Use when reviewing architecture, implementation specs, codebase, or operational practices to verify that reliability and performance promises hold under load, failure, and scale. Use after incidents, before shipping reliability-adjacent features, when writing SLA or uptime copy, or during architecture planning sessions.
+name: nitpick
+description: This repository's reliability findings ("nitpicks"). Use whenever the user says "nitpick" — e.g. "nitpick please", "nitpick this", "run a nitpick" — to run a reliability/architecture review and record findings; OR asks ABOUT findings — e.g. "how many P1 nitpicks are open?", "what's deferred?", "anything left before shipping?" — to query them. Also use after incidents, before shipping reliability-adjacent work, or when writing uptime/SLA copy.
 ---
 
-# Reliability Architect Review
+# Nitpick
+
+`nitpick` surfaces and tracks reliability findings for this repository. **First decide which mode the request wants, then act.**
+
+## Mode A — Query existing findings (do NOT re-review)
+
+Use when the request asks *about* findings — counts, status, what is left. Examples:
+"how many P1 nitpicks are open?", "what's deferred?", "is RAR-03 still open?",
+"anything blocking a push to main?".
+
+Answer from the CLI; do not run a new review:
+
+- `nitpick list` — all findings for this repo; or `nitpick list --status open|resolved|deferred`.
+- Severity is the `[Pn]` column (P0–P3). To count open P1s, run `nitpick list --status open` and count the `P1` rows.
+- Report the counts/IDs directly from that output.
+
+## Mode B — Run a review
+
+Use when the request asks to *do* a review — "nitpick please", "nitpick this",
+"run a nitpick", before shipping or merging, after an incident. Work through the
+framework below, emit findings in the `FINDING RAR-NN` format, then persist them
+(see "Persisting findings to nitpick" at the end) so the gate can enforce them.
+
+If the request is ambiguous between the two modes, ask which the user wants.
 
 ## Overview
 

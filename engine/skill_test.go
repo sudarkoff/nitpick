@@ -12,14 +12,14 @@ import (
 // The embedded skill must instruct the model to emit exactly what the parser
 // accepts, and to ingest via `nitpick review`. This guards skill/parser drift.
 func TestEmbeddedSkill_MatchesParserAndIngestContract(t *testing.T) {
-	b, err := skills.FS.ReadFile("reliability-architect-review/SKILL.md")
+	b, err := skills.FS.ReadFile("nitpick/SKILL.md")
 	if err != nil {
 		t.Fatalf("embedded skill missing: %v", err)
 	}
 	s := string(b)
 	for _, want := range []string{
 		"FINDING RAR", "Promise at risk", "Component", "Failure mode",
-		"Detection gap", "Recommendation", "nitpick review",
+		"Detection gap", "Recommendation", "nitpick review", "nitpick list",
 	} {
 		if !strings.Contains(s, want) {
 			t.Errorf("embedded skill is missing %q (parser/ingest contract)", want)
@@ -44,12 +44,12 @@ func TestInstallSkillFiles(t *testing.T) {
 	if _, err = installSkillFiles(root, true); err != nil { // write
 		t.Fatalf("write: %v", err)
 	}
-	want := filepath.Join(root, "reliability-architect-review", "SKILL.md")
+	want := filepath.Join(root, "nitpick", "SKILL.md")
 	got, err := os.ReadFile(want)
 	if err != nil {
 		t.Fatalf("written skill: %v", err)
 	}
-	emb, _ := skills.FS.ReadFile("reliability-architect-review/SKILL.md")
+	emb, _ := skills.FS.ReadFile("nitpick/SKILL.md")
 	if string(got) != string(emb) {
 		t.Error("written skill content != embedded")
 	}

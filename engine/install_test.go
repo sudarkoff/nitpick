@@ -15,7 +15,7 @@ func TestInstall_DefaultWrites_DryRunDoesNot(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("NITPICK_DB", filepath.Join(t.TempDir(), "db"))
-	skill := filepath.Join(home, ".claude", "skills", "reliability-architect-review", "SKILL.md")
+	skill := filepath.Join(home, ".claude", "skills", "nitpick", "SKILL.md")
 
 	if rc := Install([]string{"--dry-run"}); rc != 0 {
 		t.Fatalf("--dry-run rc=%d", rc)

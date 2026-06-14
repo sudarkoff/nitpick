@@ -15,7 +15,7 @@ import (
 	"github.com/sudarkoff/nitpick/loop"
 )
 
-const defaultSkill = "reliability-architect-review"
+const defaultSkill = "nitpick"
 
 const usage = `nitpick — reliability findings gate
 

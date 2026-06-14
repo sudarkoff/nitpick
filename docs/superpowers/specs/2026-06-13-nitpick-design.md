@@ -278,3 +278,15 @@ the real `git push` → hook → block chain was verified against a bare remote.
 compatibility). Because installing now runs `dolt init`, `findings.Open` passes
 an explicit `--name`/`--email` to dolt so it no longer fails on a machine where
 dolt has no global identity configured.
+
+## Skill renamed to `nitpick` + run/query dispatch (2026-06-13)
+
+The bundled skill is renamed `reliability-architect-review` -> `nitpick` so the
+whole workflow is one word ("nitpick please" runs it). Its description triggers
+on both the imperative ("nitpick", "run a nitpick", "nitpick this") and on
+questions about findings ("how many P1 nitpicks are open?"). The skill now opens
+with a two-mode dispatch: **Mode A — query** existing findings via `nitpick list`
+(no re-review), and **Mode B — run** the review framework and ingest via
+`nitpick review`. Finding IDs remain `RAR-NN` (renaming the ID scheme is a
+separate migration). The embed path, install destination
+(`~/.claude/skills/nitpick/`), and the `--skill` default label all follow.
