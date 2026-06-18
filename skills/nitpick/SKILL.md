@@ -11,7 +11,7 @@ description: This repository's reliability findings ("nitpicks"). Use whenever t
 
 Use when the request asks *about* findings — counts, status, what is left. Examples:
 "how many P1 nitpicks are open?", "what's deferred?", "is NP-03 still open?",
-"anything blocking a push to main?".
+"anything blocking a push?".
 
 Answer from the CLI; do not run a new review:
 
@@ -220,6 +220,6 @@ The review is not complete until its findings are saved. After emitting every
 nitpick keys findings by the repository's git origin and by stable ID
 (`NP-NN`), so re-running the review updates findings in place — it never
 reopens anything already resolved or waived. Once ingested, P0/P1 findings block
-a push to `main` until they are fixed (`nitpick resolve <ID> --evidence …`) or
+a push to `origin` (any branch) until they are fixed (`nitpick resolve <ID> --evidence …`) or
 waived with a reason (`nitpick waive <ID> --reason …`); P2/P3 are filed for
 later. List them anytime with `nitpick list`.

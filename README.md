@@ -36,6 +36,34 @@ terminal or the agent — is checked (bypass with `git push --no-verify`).
 The installed skill ends by running `nitpick review`, which records findings, so
 `nitpick list` reflects exactly what has been ingested (run a review to populate it).
 
+### When to install
+
+nitpick pays off most when it's in place from day one: every major architectural
+decision passes through a reliability review before it hardens into something
+expensive to change, and the must-fix findings are caught while the code is still
+fresh. Starting early means the gate grows with the project instead of inheriting a
+backlog.
+
+That said, it drops into an existing project just as easily — `nitpick install`
+followed by `nitpick init` in the repo is all it takes, no code changes required.
+The natural first step on an established codebase is to take a baseline (below).
+
+### Baselining an existing codebase
+
+To review a project that already exists rather than a single change, point the skill
+at the whole repository — ask **"nitpick this whole codebase"** (or just "nitpick
+please" with nothing staged) and it works through all five phases over the entire
+tree instead of a diff. The run emits `FINDING NP-NN` blocks and ingests them, so
+`nitpick list` becomes your starting backlog:
+
+```bash
+nitpick list --status open       # the P0/P1 must-fixes the baseline surfaced
+nitpick list --status deferred   # P2/P3 carried forward with context
+```
+
+From there, work the open findings down with `nitpick resolve`/`nitpick waive`; the
+gate keeps new pushes from adding to the must-fix pile while you do.
+
 ## The `nitpick` skill
 
 `nitpick install` bundles a Claude Code skill (also named `nitpick`) into
