@@ -86,7 +86,8 @@ and shows up in `nitpick list`.
 
 ```bash
 nitpick review --repo github.com/you/proj --from findings.txt  # ingest NP-NN findings
-nitpick list --repo github.com/you/proj --status open          # show open findings
+nitpick list --repo github.com/you/proj --status open          # show open findings (one truncated line each)
+nitpick show NP-05 --repo github.com/you/proj                  # print one finding in full (no truncation)
 nitpick resolve NP-03 --evidence sha:abc123                    # mark fixed (evidence verified + re-checked)
 nitpick waive NP-04 --reason "accepted risk until Q3 ..."      # defer with a reason
 nitpick defer NP-05                                            # carry forward
