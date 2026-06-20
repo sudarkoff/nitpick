@@ -27,6 +27,7 @@ usage:
   nitpick review [--repo R] [--skill S] [--from FILE]
                                                  ingest RAR-NN findings (stdin if no --from)
   nitpick list   [--repo R] [--status S]         list findings (status: open|resolved|deferred)
+  nitpick show   ID [--repo R]                    print one finding in full (no truncation)
   nitpick resolve ID [--repo R] --evidence E     mark a finding fixed (evidence is verified)
   nitpick waive   ID [--repo R] --reason TEXT    defer a finding with a written reason
   nitpick defer   ID [--repo R]                  carry a finding forward
@@ -58,6 +59,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return cmdReview(rest, stdout, stderr)
 	case "list":
 		return cmdList(rest, stdout, stderr)
+	case "show":
+		return cmdShow(rest, stdout, stderr)
 	case "resolve":
 		return cmdResolve(rest, stdout, stderr)
 	case "waive":
@@ -151,6 +154,63 @@ func cmdList(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	return 0
+}
+
+func cmdShow(args []string, stdout, stderr io.Writer) int {
+	id, rest := popPositional(args)
+	fs := flag.NewFlagSet("show", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	repo := fs.String("repo", "", "repository identifier (default: git origin)")
+	if err := fs.Parse(rest); err != nil {
+		return 2
+	}
+	if id == "" {
+		fmt.Fprintln(stderr, "show: usage: nitpick show ID")
+		return 2
+	}
+	r := engine.ResolveRepo(*repo)
+	if r == "" {
+		fmt.Fprintln(stderr, "show: --repo required (could not detect git origin)")
+		return 2
+	}
+	store, err := findings.Open(engine.DefaultDBDir())
+	if err != nil {
+		fmt.Fprintf(stderr, "show: %v\n", err)
+		return 1
+	}
+	rec, err := store.Get(r, id)
+	if err != nil {
+		fmt.Fprintf(stderr, "show: %v\n", err)
+		return 1
+	}
+	if rec == nil {
+		fmt.Fprintf(stderr, "show: no finding %s for %s\n", id, r)
+		return 1
+	}
+	fmt.Fprint(stdout, formatRecord(*rec))
+	return 0
+}
+
+// formatRecord renders a finding in full, untruncated — the whole reason `show`
+// exists alongside the one-line `list`. Empty fields are omitted; lifecycle
+// context (evidence on resolve, waiver on defer) is shown when present.
+func formatRecord(rec findings.Record) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "FINDING %s [%s]  %s\n", rec.FindingID, rec.Severity, rec.Status)
+	field := func(label, value string) {
+		if value != "" {
+			fmt.Fprintf(&b, "  %-16s %s\n", label+":", value)
+		}
+	}
+	field("Promise at risk", rec.Promise)
+	field("Component", rec.Component)
+	field("Failure mode", rec.FailureMode)
+	field("Detection gap", rec.DetectionGap)
+	field("Recommendation", rec.Recommendation)
+	field("Evidence", rec.Evidence)
+	field("Waiver", rec.WaiverReason)
+	field("Skill", rec.Skill)
+	return b.String()
 }
 
 func cmdResolve(args []string, stdout, stderr io.Writer) int {
